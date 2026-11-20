@@ -21,7 +21,7 @@ NAVY = (15, 42, 68)
 NAVY_LIGHT = (27, 68, 102)
 RED = (178, 34, 34)
 DARK = (24, 24, 24)
-GREY = (90, 90, 90)
+GREY = (74, 74, 74)
 WHITE = (255, 255, 255)
 CARD = (255, 255, 255)
 TEAL = (0, 128, 128)
@@ -74,18 +74,21 @@ def flag_us(draw, x, y, w, h):
     for i in range(7):
         draw.rectangle([x, y + i * h / 7, x + w, y + (i + 1) * h / 7],
                        fill=(178, 34, 52) if i % 2 == 0 else WHITE)
-    draw.rectangle([x, y, x + w * 0.4, y + h * 4 / 7], fill=NAVY)
+    # Canton is the top-left 40% wide, 4/7 tall. Keep every star
+    # inside it: 4 columns x 3 rows, 4px dots on a ~9px grid.
+    cw, chh = w * 0.4, h * 4 / 7
+    draw.rectangle([x, y, x + cw, y + chh], fill=NAVY)
     for r in range(3):
         for c in range(4):
-            cx = x + 12 + c * 22
-            cy = y + 10 + r * 14
-            draw.ellipse([cx, cy, cx + 6, cy + 6], fill=WHITE)
+            cx = x + 4 + c * 9
+            cy = y + 3 + r * 7
+            draw.ellipse([cx, cy, cx + 4, cy + 4], fill=WHITE)
 
 
 def flag_cn(draw, x, y, w, h):
     draw.rectangle([x, y, x + w, y + h], fill=(222, 41, 16))
-    for cx, cy, r in [(x + 20, y + 14, 8), (x + 42, y + 10, 4),
-                      (x + 50, y + 22, 4), (x + 44, y + 34, 4)]:
+    for cx, cy, r in [(x + 18, y + 13, 7), (x + 38, y + 10, 4),
+                      (x + 45, y + 20, 4), (x + 40, y + 30, 4)]:
         draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(255, 222, 0))
 
 
@@ -169,8 +172,15 @@ def draw_card(draw, x, y, w, h, colour, kicker, title, body, icon):
     ICONS[icon](draw, x + 58, y + 66, colour)
     tx = x + 116
     draw.text((tx, y + 16), kicker, font=BOLD(19), fill=colour)
-    text_block(draw, tx, y + 42, title, BOLD(26), DARK, w - 132, leading=2)
-    text_block(draw, tx, y + 104, body, REG(20), GREY, w - 132, leading=2)
+    # Title first, then body directly below it (not at a fixed y),
+    # so a one-line title leaves room and a two-line title never
+    # pushes the body past the card bottom.
+    title_lines = wrap(draw, title, BOLD(26), w - 132)
+    ty = y + 42
+    for line in title_lines:
+        draw.text((tx, ty), line, font=BOLD(26), fill=DARK)
+        ty += 26 + 2
+    text_block(draw, tx, ty + 6, body, REG(19), GREY, w - 132, leading=2)
 
 
 def main():
@@ -197,32 +207,37 @@ def main():
     text_block(draw, lx + 28, ly + 48,
                "Trump, Xi and Putin sign a 'Declaration toward Peace'",
                SERIF_BOLD(36), DARK, 920, leading=2)
-    text_block(draw, lx + 28, ly + 132,
+    text_block(draw, lx + 28, ly + 128,
                "First-ever trilateral summit ends with a four-point pact: "
                "UN reform, energy cooperation, official immunity and "
                "nuclear-risk dialogue.",
                REG(23), GREY, 920, leading=3)
 
-    # Flags row inside the lead card, bottom right.
-    fy = ly + 188
+    # Flags row inside the lead card, with room to spare at the
+    # bottom: flags at ly+184, 40px tall, so the Zelensky second
+    # line (fy+24, 19pt) ends at ly+227, inside the 240px card.
+    # Tighter flag spacing (168px step, 88px flags) keeps the
+    # RUSSIA label clear of the Zelensky note on the right.
+    fy = ly + 184
     for i, (fn, label) in enumerate([(flag_us, "USA"), (flag_cn, "CHINA"),
                                      (flag_ru, "RUSSIA")]):
-        fx = lx + 28 + i * 180
-        fn(draw, fx, fy, 95, 44)
-        draw.rectangle([fx, fy, fx + 95, fy + 44], outline=DARK, width=2)
-        draw.text((fx + 103, fy + 10), label, font=BOLD(19), fill=DARK)
-    draw.text((lx + 620, fy + 8), "Zelensky: no deal",
-              font=BOLD(21), fill=NAVY)
-    draw.text((lx + 620, fy + 34), "without Kyiv.",
-              font=REG(20), fill=GREY)
+        fx = lx + 28 + i * 168
+        fn(draw, fx, fy, 88, 40)
+        draw.rectangle([fx, fy, fx + 88, fy + 40], outline=DARK, width=2)
+        draw.text((fx + 96, fy + 9), label, font=BOLD(18), fill=DARK)
+    draw.text((lx + 620, fy + 2), "Zelensky: no deal",
+              font=BOLD(20), fill=NAVY)
+    draw.text((lx + 620, fy + 26), "without Kyiv.",
+              font=REG(19), fill=GREY)
 
-    # Six-story grid.
+    # Six-story grid. Bodies shortened to two lines at 19pt so no
+    # third line runs into the card bottom edge.
     stories = [
         (NAVY, "JUSTICE  •  THE HAGUE", "ICJ: Myanmar committed genocide",
          "World Court rules 9-6: the 2017 crackdown was genocide.",
          "scales"),
         (GREEN, "MARKETS  •  NEW YORK", "Anthropic's IPO soars",
-         "First frontier AI firm lists on Nasdaq (ANT); shares up 17% on debut.",
+         "Frontier AI firm lists on Nasdaq (ANT); shares up 17% on debut.",
          "rocket"),
         (RED, "MARKETS  •  WORLD", "Stocks tumble on AI fears",
          "Dow below 50,000; S&P -2.0%, Nasdaq -2.3%; Asia plunges.",
@@ -234,7 +249,7 @@ def main():
          "Draft deal drops the call; Africa seeks tripled climate finance.",
          "leaf"),
         (ORANGE, "MIDDLE EAST  •  RIYADH", "Houthi strike hits Riyadh tower",
-         "Attack damages Saudi Arabia's tallest tower; Gaza strains ceasefire.",
+         "Attack damages Riyadh's tallest tower; Gaza ceasefire strains.",
          "tower"),
     ]
     gx, gy = 24, 426
